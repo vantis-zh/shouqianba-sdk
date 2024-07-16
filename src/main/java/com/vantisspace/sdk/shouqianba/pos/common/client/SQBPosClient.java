@@ -16,6 +16,7 @@ import com.vantisspace.sdk.shouqianba.pos.common.bean.SQBPosResponse;
 import lombok.Cleanup;
 import lombok.extern.slf4j.Slf4j;
 
+import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -127,8 +128,15 @@ public class SQBPosClient {
         @Cleanup HttpResponse httpResponse = httpRequest.execute();
         String responseJson = httpResponse.body();
         log.info("SQB response, path:{}, param: {}, return: {}", request.url(), requestJson, responseJson);
-        Type jsonType = new TypeToken<SQBPosResponse<T>>() {
-        }.getType();
-        return GSON.fromJson(responseJson, jsonType);
+        // FIXME 这里泛型没处理好
+        Type type = request.getClass().getGenericSuperclass();
+        Type responseClass;
+        if (!(type instanceof ParameterizedType)) {
+            throw new RuntimeException("未找到返回类型类信息");
+        } else {
+            ParameterizedType parameterizedType = (ParameterizedType) type;
+            responseClass = parameterizedType.getActualTypeArguments()[0];
+        }
+        return GSON.fromJson(responseJson, responseClass);
     }
 }
