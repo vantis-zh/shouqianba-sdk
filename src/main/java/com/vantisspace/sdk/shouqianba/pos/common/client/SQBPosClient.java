@@ -51,8 +51,12 @@ public class SQBPosClient {
     }
 
     public SQBPosResponse<TerminalActivateResponseData> activate(TerminalActivateRequestData request) {
+        if (null == request.getUniqueId()) {
+            throw new RuntimeException("请指定设备编号");
+        }
         request.setApp_id(appId);
-        SQBPosResponse<TerminalActivateResponseData> response = call(request, vendorKey);
+        request.setDevice_id(request.getUniqueId());
+        SQBPosResponse<TerminalActivateResponseData> response = call(request, vendorSn, vendorKey);
         if (!response.succeed()) {
             log.error("激活失败, error: {}", GSON.toJson(response));
             throw new RuntimeException("激活失败: " + response.getError_message());
@@ -72,12 +76,13 @@ public class SQBPosClient {
         if (null == request.getUniqueId()) {
             throw new RuntimeException("请指定设备编号");
         }
+        String sn = DEVICE_SN.get(request.getUniqueId());
         String key = DEVICE_KEY.get(request.getUniqueId());
         if (null == key) {
             throw new RuntimeException("设备未激活");
         }
 
-        SQBPosResponse<TerminalCheckInResponseData> response = call(request, key);
+        SQBPosResponse<TerminalCheckInResponseData> response = call(request, sn, key);
         if (!response.succeed()) {
             log.error("签到失败, error: {}", GSON.toJson(response));
             throw new RuntimeException("签到失败: " + response.getError_message());
@@ -88,13 +93,14 @@ public class SQBPosClient {
     }
 
     public <T> SQBPosResponse<T> call(SQBPosRequest<T> request) {
-        if (request instanceof TerminalActivateRequestData) {
-            return (SQBPosResponse<T>) activate((TerminalActivateRequestData) request);
-        }
-
         if (null == request.getUniqueId()) {
             throw new RuntimeException("请指定设备编号");
         }
+        if (request instanceof TerminalActivateRequestData) {
+            ((TerminalActivateRequestData) request).setDevice_id(request.getUniqueId());
+            return (SQBPosResponse<T>) activate((TerminalActivateRequestData) request);
+        }
+
         String sn = DEVICE_SN.get(request.getUniqueId());
         String key = DEVICE_KEY.get(request.getUniqueId());
         if (null == key) {
@@ -106,16 +112,16 @@ public class SQBPosClient {
             return (SQBPosResponse<T>) checkIn((TerminalCheckInRequestData) request);
         }
 
-        return call(request, key);
+        return call(request, sn, key);
     }
 
-    private <T> SQBPosResponse<T> call(SQBPosRequest<T> request, String key) {
+    private <T> SQBPosResponse<T> call(SQBPosRequest<T> request, String sn, String key) {
         request.setUniqueId(null);
         String requestJson = GSON.toJson(request);
         log.info("SQB request, path: {}, param: {}", request.url(), requestJson);
         HttpRequest httpRequest = HttpRequest.post(apiDomain + request.url())
                 .header("Content-Type", "Application/json")
-                .header("Authorization", "sn " + DigestUtil.md5Hex(
+                .header("Authorization", sn + " " + DigestUtil.md5Hex(
                         (requestJson + key).getBytes(StandardCharsets.UTF_8)))
                 .body(requestJson);
         @Cleanup HttpResponse httpResponse = httpRequest.execute();
