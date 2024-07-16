@@ -20,7 +20,7 @@ public class UPayRequestData extends SQBPosRequest<UPayResponseData> {
      * 交易总金额
      * Y 以分为单位,不超过10位纯数字字符串,超过1亿元的收款请使用银行转账
      */
-    private BigDecimal total_amount;
+    private String total_amount;
     /**
      * 支付方式
      * N 非必传。内容为数字的字符串。一旦设置，则根据支付码判断支付通道的逻辑失效

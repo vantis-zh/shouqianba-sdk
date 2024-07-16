@@ -48,7 +48,7 @@ public class SQBPosClient {
 
     public void offlineActivate(String deviceId, String deviceSn, String deviceKey) {
         DEVICE_SN.put(deviceId, deviceSn);
-        DEVICE_SN.put(deviceId, deviceKey);
+        DEVICE_KEY.put(deviceId, deviceKey);
     }
 
     public SQBPosResponse<TerminalActivateResponseData> activate(TerminalActivateRequestData request) {
@@ -72,7 +72,7 @@ public class SQBPosClient {
             request.setUniqueId(request.getDevice_id());
         }
         if (null != request.getUniqueId()) {
-            request.setUniqueId(request.getUniqueId());
+            request.setDevice_id(request.getUniqueId());
         }
         if (null == request.getUniqueId()) {
             throw new RuntimeException("请指定设备编号");
@@ -128,7 +128,7 @@ public class SQBPosClient {
         @Cleanup HttpResponse httpResponse = httpRequest.execute();
         String responseJson = httpResponse.body();
         log.info("SQB response, path:{}, param: {}, return: {}", request.url(), requestJson, responseJson);
-        // FIXME 这里泛型没处理好
+        // FIXED 这里泛型没处理好
         Type type = request.getClass().getGenericSuperclass();
         Type responseClass;
         if (!(type instanceof ParameterizedType)) {
@@ -137,6 +137,6 @@ public class SQBPosClient {
             ParameterizedType parameterizedType = (ParameterizedType) type;
             responseClass = parameterizedType.getActualTypeArguments()[0];
         }
-        return GSON.fromJson(responseJson, responseClass);
+        return GSON.fromJson(responseJson, TypeToken.getParameterized(SQBPosResponse.class, responseClass).getType());
     }
 }
